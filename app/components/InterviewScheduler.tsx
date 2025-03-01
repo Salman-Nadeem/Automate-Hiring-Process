@@ -1,38 +1,108 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { format, addDays, setHours, setMinutes } from "date-fns"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { format, addDays, setHours, setMinutes } from "date-fns";
 
 const generateAvailableSlots = () => {
-  const slots = []
-  const startDate = new Date()
+  const slots = [];
+  const startDate = new Date();
   for (let i = 1; i <= 5; i++) {
-    const date = addDays(startDate, i)
+    const date = addDays(startDate, i);
+    const slotBase = setMinutes(date, 0);
     slots.push(
-      { id: `${format(date, "yyyy-MM-dd")}-10:00`, datetime: setHours(setMinutes(date, 0), 10) },
-      { id: `${format(date, "yyyy-MM-dd")}-14:00`, datetime: setHours(setMinutes(date, 0), 14) },
-    )
+      { id: `${date.toISOString()}-10:00`, datetime: setHours(slotBase, 10) },
+      { id: `${date.toISOString()}-14:00`, datetime: setHours(slotBase, 14) }
+    );
   }
-  return slots
-}
+  return slots;
+};
+// Generate available interview slots for the next 5 days at 10:00 AM and 2:00 PM.
 
-const availableSlots = generateAvailableSlots()
+const availableSlots = generateAvailableSlots();
 
-export default function InterviewScheduler({ onSchedule }: { onSchedule: (time: string) => void }) {
-  const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
+export default function InterviewScheduler() {
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [finalInterviewTime, setFinalInterviewTime] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (selectedSlot) {
-      onSchedule(selectedSlot)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSlot) return;
+
+    setLoading(true);
+    setMessage("");
+
+    // Retrieve candidate details from sessionStorage
+    const candidateEmail = sessionStorage.getItem("jobApplicantEmail") || "test@example.com";
+    const candidateName = sessionStorage.getItem("jobApplicantName") || "John Doe";
+    const candidatePosition = sessionStorage.getItem("jobApplicantPosition") || "Software Engineer";
+
+
+
+
+    try {
+
+      const requestBody = {
+        candidateEmail : candidateEmail,
+        candidateName :candidateName ,
+        position: candidatePosition,
+        interviewDate: selectedSlot,
+      };
+    
+      console.log("🔍 Sending Data:", requestBody); // Debugging Purpose
+
+
+      const response = await fetch("/api/Interview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+     });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setMessage("✅ Interview scheduled successfully!");
+        setFinalInterviewTime(selectedSlot);
+        setIsScheduled(true);
+      } else {
+        setMessage(`❌ Error: ${result.error}`);
+      }
+    } catch (error) {
+      setMessage("❌ Failed to schedule interview.");
+      console.error("Error:", error);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  // If the interview has been scheduled, show the final screen.
+  if (isScheduled) {
+    return (
+      <Card className="w-full max-w-2xl mx-auto mt-20">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold">Interview Scheduled</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4" role="alert">
+            <p className="font-bold">Congratulations!</p>
+            <p>Your interview is scheduled for: {finalInterviewTime}</p>
+            <p>Join link: <a href="https://meet.example.com/interview-123" className="underline">https://meet.example.com/interview-123</a></p>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
+  // Otherwise, show the scheduling form.
   return (
-    <Card className="w-full max-w-2xl mx-auto">
+    <Card className="w-full max-w-2xl mx-auto mt-20">
       <CardHeader>
         <CardTitle className="text-2xl font-bold">Schedule Your Interview</CardTitle>
       </CardHeader>
@@ -52,12 +122,12 @@ export default function InterviewScheduler({ onSchedule }: { onSchedule: (time: 
               </Button>
             ))}
           </div>
-          <Button type="submit" className="w-full mt-6" disabled={!selectedSlot}>
-            Confirm Interview Time
+          <Button type="submit" className="w-full mt-6" disabled={!selectedSlot || loading}>
+            {loading ? "Scheduling..." : "Confirm Interview Time"}
           </Button>
+          {message && <p className="text-center text-red-500 mt-4">{message}</p>}
         </form>
       </CardContent>
     </Card>
-  )
+  );
 }
-

@@ -1,47 +1,31 @@
-import { NextApiRequest, NextApiResponse } from "next";
-import multer from "multer";
-import { v2 as cloudinary } from "cloudinary";
-import streamifier from "streamifier";
-import DbConnection from "@/app/api/libs/Db";
-import JobApplication from "@/model/job_application";
-import nc from "next-connect";
+import { DbConnection } from "@/app/api/libs/Db";
+import JobApplication from "@/app/api/model/JobApplication";
 
-// Cloudinary Config
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
-
-// Multer Memory Storage
-const upload = multer({ storage: multer.memoryStorage() });
-
-// Changed function name from "handler" to "jobApplicationHandler"
-const jobApplicationHandler = nc();
-jobApplicationHandler.use(upload.single("cv"));
-
-const uploadToCloudinary = (fileBuffer: Buffer) => {
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      { folder: "job_applications", resource_type: "auto" },
-      (error, result) => {
-        if (error) reject(error);
-        else resolve(result?.secure_url);
-      }
-    );
-    streamifier.createReadStream(fileBuffer).pipe(stream);
-  });
-};
-
-jobApplicationHandler.post(async (req: NextApiRequest, res: NextApiResponse) => {
+export async function POST(req) {
   try {
-    await connectToDatabase(); // Database connection
+    await DbConnection();
 
-    const { name, email, phone, cnic, currentAddress, education, lastSalary, expectedSalary, joinDate, whyHireYou, position, experience, references, skills } = req.body;
-    
-    let cvUrl = "";
-    if (req.file) {
-      cvUrl = (await uploadToCloudinary(req.file.buffer)) as string;
+    const formData = await req.formData();
+    const name = formData.get("name");
+    const email = formData.get("email");
+    const phone = formData.get("phone");
+    const cnic = formData.get("cnic");
+    const currentAddress = formData.get("currentAddress");
+    const education = formData.get("education");
+    const lastSalary = formData.get("lastSalary");
+    const expectedSalary = formData.get("expectedSalary");
+    const joinDate = formData.get("joinDate");
+    const whyHireYou = formData.get("whyHireYou");
+    const position = formData.get("position");
+    const experience = formData.get("experience");
+    const references = formData.get("references");
+    const skills = JSON.parse(formData.get("skills") || "[]");
+
+    if (!name || !email || !phone || !position) {
+      return new Response(
+        JSON.stringify({ error: "Name, Email, Phone, and Position are required" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
     }
 
     const newApplication = new JobApplication({
@@ -58,17 +42,46 @@ jobApplicationHandler.post(async (req: NextApiRequest, res: NextApiResponse) => 
       position,
       experience,
       references,
-      skills: JSON.parse(skills),
-      cvUrl,
+      skills,
     });
 
     await newApplication.save();
-    res.status(201).json({ message: "Application submitted successfully!", cvUrl });
-  } catch (error) {
-    console.error("Upload Error:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
 
-export default jobApplicationHandler;
-export const config = { api: { bodyParser: false } };
+    // Optionally, set session data here if needed
+    // req.session.jobApplicantPosition = position;
+    // await req.session.save();
+
+    return new Response(
+      JSON.stringify({ success: true, message: "Application submitted successfully!", applicationId: newApplication._id }),
+      { status: 201, headers: { "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Submission Error:", error);
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+}
+
+
+
+export async function GET() {
+  try {
+    await DbConnection();
+
+    // MongoDB se sari applications fetch karo
+    const applications = await JobApplication.find({});
+
+    return new Response(
+      JSON.stringify(applications),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Fetch Error:", error);
+    return new Response(
+      JSON.stringify({ error: "Internal Server Error" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
+}
