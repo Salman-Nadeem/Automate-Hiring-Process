@@ -35,7 +35,7 @@ export default function PostInterviewTest({ onComplete = () => {} }) {
 
   useEffect(() => {
     if (timeLeft <= 0) {
-      handleSubmit(); // Auto-submit test when timer reaches zero
+      handleSubmit();
     }
 
     const timer = setInterval(() => {
@@ -75,20 +75,44 @@ export default function PostInterviewTest({ onComplete = () => {} }) {
   };
 
   if (loading) {
-    return <div className="text-center text-xl font-semibold">Loading questions...</div>;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center">
+        <div className="text-2xl font-semibold text-indigo-600 animate-pulse">Loading Your Challenge...</div>
+      </div>
+    );
   }
 
   if (questions.length === 0) {
-    return <div className="text-center text-xl font-semibold">No questions available for your position.</div>;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center">
+        <div className="text-2xl font-semibold text-purple-600">No Challenges Available Today!</div>
+      </div>
+    );
   }
 
   if (testCompleted) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        <Card className="p-6 w-96 text-center shadow-lg border border-gray-200">
-          <h2 className="text-3xl font-bold mb-4">Test Completed!</h2>
-          <p className="text-lg font-semibold mb-2">Your Score: <span className="text-blue-600">{score.toFixed(2)}%</span></p>
-          <p className="text-gray-600">Thank you for completing the test.</p>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex flex-col items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-2xl rounded-3xl overflow-hidden bg-white/95 backdrop-blur-sm border border-indigo-100">
+          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-center">
+            <h2 className="text-3xl font-bold text-white tracking-wide">Test Completed!</h2>
+          </div>
+          <CardContent className="p-6 text-center space-y-4">
+            <p className="text-lg font-semibold text-gray-700">
+              Your Score: <span className={`text-3xl ${score >= 60 ? "text-green-600" : "text-red-600"}`}>{score.toFixed(2)}%</span>
+            </p>
+            <div className="relative pt-1">
+              <div className="overflow-hidden h-2 mb-4 text-xs flex rounded-full bg-gray-200">
+                <div
+                  style={{ width: `${score}%` }}
+                  className={`shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center transition-all duration-1000 ease-out ${
+                    score >= 60 ? "bg-green-500" : "bg-red-500"
+                  }`}
+                ></div>
+              </div>
+            </div>
+            <p className="text-gray-600 italic">Thank you for showcasing your skills!</p>
+          </CardContent>
         </Card>
       </div>
     );
@@ -97,25 +121,48 @@ export default function PostInterviewTest({ onComplete = () => {} }) {
   const question = questions[currentQuestion];
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen p-4">
-      <Card className="w-full max-w-xl shadow-lg border border-gray-200">
-        <CardContent className="p-6 space-y-6">
-          <div className="flex justify-between">
-            <h2 className="text-xl font-semibold">Post-Interview Test</h2>
-            <p className="text-red-500 font-bold">Time Left: {formatTime(timeLeft)}</p>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex flex-col items-center justify-center p-4">
+      <Card className="w-full max-w-xl shadow-xl rounded-2xl overflow-hidden bg-white/95 backdrop-blur-sm border border-purple-100">
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-500 p-6 flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-white">Post-Interview Challenge</h2>
+          <div className="text-white font-bold text-lg">
+            <span className="inline-block px-3 py-1 bg-red-500/20 rounded-full">{formatTime(timeLeft)}</span>
           </div>
-          <p className="text-lg font-semibold">{currentQuestion + 1}. {question.question}</p>
+        </div>
+        <CardContent className="p-6 space-y-6">
+          <div className="flex items-center gap-2">
+            <span className="w-8 h-8 flex items-center justify-center bg-indigo-100 text-indigo-700 font-bold rounded-full">
+              {currentQuestion + 1}
+            </span>
+            <p className="text-lg font-semibold text-gray-800">{question.question}</p>
+          </div>
           <RadioGroup value={answers[currentQuestion]} onValueChange={handleAnswer} className="space-y-3">
             {question.options.map((option) => (
-              <div key={option} className="flex items-center space-x-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-100">
-                <RadioGroupItem value={option} id={option} />
-                <Label htmlFor={option} className="w-full">{option}</Label>
+              <div
+                key={option}
+                className={`flex items-center space-x-3 p-3 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
+                  answers[currentQuestion] === option
+                    ? "border-indigo-500 bg-indigo-50"
+                    : "border-gray-200 hover:bg-gray-50"
+                }`}
+              >
+                <RadioGroupItem value={option} id={option} className="text-indigo-600" />
+                <Label htmlFor={option} className="w-full text-gray-700 font-medium">{option}</Label>
               </div>
             ))}
           </RadioGroup>
-          <Button onClick={handleNext} disabled={!answers[currentQuestion]} className="w-full">
-            {currentQuestion === questions.length - 1 ? "Submit Test" : "Next Question"}
-          </Button>
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-gray-500">
+              Question {currentQuestion + 1} of {questions.length}
+            </p>
+            <Button
+              onClick={handleNext}
+              disabled={!answers[currentQuestion]}
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-2 px-6 rounded-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {currentQuestion === questions.length - 1 ? "Submit Challenge" : "Next Question"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

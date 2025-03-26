@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { DbConnection } from "@/app/api/libs/Db";
-import job from "@/app/api/model/job";
+import Job from "@/app/api/model/job";
 
 export async function GET() {
   try {
     await DbConnection();
-    const jobs = await job.find({});
+    const jobs = await Job.find({});
     return NextResponse.json(jobs, { status: 200 });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch jobs" }, { status: 500 });
@@ -15,18 +15,17 @@ export async function GET() {
 
 export async function POST(req) {
   try {
-    await DbConnection(); // Database se connect karo
-    const jobData = await req.json(); // Request body lo
+    await DbConnection();
+    const data = await req.json();
 
-    // Single ya multiple jobs insert karo
-    const insertedJob = await job.create(jobData);
+    const job = new Job(data); // ✅ Ensure "Job" (not "job") is used correctly
+    await job.save();
 
-    return NextResponse.json({ success: true, data: insertedJob }, { status: 201 });
+    return NextResponse.json({ message: "Job posted successfully", job }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ message: "Error posting job", error: error.message }, { status: 500 });
   }
 }
-
 
 export async function DELETE(req, { params }) {
   await dbConnect(); // MongoDB se connect
